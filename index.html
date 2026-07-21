@@ -448,6 +448,7 @@ function renderBimb(){
     </div></article>`;}).join('');
   document.querySelectorAll('#listBimb .acts button').forEach(btn=>btn.onclick=async()=>{
     const b=data.bimbingan.find(x=>x.id===btn.parentElement.dataset.id),a=btn.dataset.a;
+    if(!/^[0-9a-f-]{36}$/i.test(b.id)&&a!=='outlook'&&a!=='ics'){toast('Muat ulang halaman dulu.');return muat();}
     if(a==='outlook'){window.open(outlookURL(evBimb(b)),'_blank');return;}
     if(a==='ics'){unduhIcs(evBimb(b),'bimbingan-'+b.nim);return;}
     let ubah=null;
@@ -698,8 +699,7 @@ $('#cariBtn').onclick=async()=>{
   nimSaya=nim;data.bimbingan=(rows||[]).map(x=>dariBimbingan(Object.assign({id:uid()},x)));
   render();toast(data.bimbingan.length?'Menampilkan pengajuanmu':'Tidak ada pengajuan dengan NIM dan kode itu.');};
 
-$('#btnMasuk').onclick=()=>{if(buka){mode='dosen';render();return;}
-  $('#formSandi').hidden=false;$('#sandi').value='';$('#sandi').focus();};
+$('#btnMasuk').onclick=()=>{if(buka){mode='dosen';nimSaya='';muat();return;}  $('#formSandi').hidden=false;$('#sandi').value='';$('#sandi').focus();};
 $('#batalSandi').onclick=()=>{$('#formSandi').hidden=true;$('#sandi').value='';};
 $('#cekSandi').onclick=async()=>{
   const{error}=await sb.auth.signInWithPassword({email:KONFIG.email,password:$('#sandi').value});
