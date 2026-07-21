@@ -89,7 +89,7 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="namaDosen">Meja Dosen</h1><div class="sub" id="subDosen"></div></div>
+    <div class="brand"><h1 id="namaDosen">Dashboard Ayomi</h1><div class="sub" id="subDosen"></div></div>
     <div class="modeswitch">
       <button id="mDosen" aria-pressed="true">Tampilan dosen</button>
       <button id="mMhs" aria-pressed="false">Tampilan mahasiswa</button>
@@ -268,7 +268,7 @@ let mode='dosen',tab='bimbingan',fBimb='semua',fBerkas='semua';
 let edit={slot:null,akt:null,kelas:null,berkas:null,peng:null};
 
 function seed(){const k1=uid(),k2=uid();return{
- profil:{nama:'Meja Dosen',prodi:'Bimbingan · Jadwal · Kelas · Berkas'},
+ profil:{nama:'Dashboard Ayomi',prodi:'Bimbingan · Jadwal · Kelas · Berkas'},
  kelas:[{id:k1,kode:'IF3021',nama:'Basis Data',hari:'Rabu',mulaiJam:'08:00',selesaiJam:'10:30',ruang:'Gedung B – 304',jml:42,mulai:today(),pekan:16},
         {id:k2,kode:'IF4110',nama:'Metodologi Penelitian',hari:'Jumat',mulaiJam:'13:00',selesaiJam:'15:30',ruang:'Gedung A – 201',jml:28,mulai:today(),pekan:16}],
  slot:[{id:uid(),ulang:'mingguan',hari:2,tgl:'',mulai:'09:00',selesai:'11:00',durasi:30,modeB:'Tatap muka',lokasi:'Ruang dosen C-212'}],
@@ -314,7 +314,7 @@ function unduhIcs(e,nama){const a=akhirDari(e),
   en=a.iso.replace(/-/g,'')+'T'+a.jam.replace(':','')+'00',
   cap=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z',
   br=t=>String(t||'').replace(/[\\;,]/g,' ').replace(/\n/g,'\\n');
-  const isi=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Meja Dosen//ID','METHOD:PUBLISH','BEGIN:VEVENT',
+  const isi=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Dashboard Ayomi//ID','METHOD:PUBLISH','BEGIN:VEVENT',
    'UID:'+uid()+'@mejadosen','DTSTAMP:'+cap,'DTSTART:'+st,'DTEND:'+en,'SUMMARY:'+br(e.judul),
    'LOCATION:'+br(e.lokasi),'DESCRIPTION:'+br(e.ket)].concat(e.rrule?['RRULE:'+e.rrule]:[])
    .concat(['BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:'+br(e.judul),'END:VALARM','END:VEVENT','END:VCALENDAR']).join('\r\n');
@@ -638,7 +638,7 @@ $('#mDosen').onclick=()=>{mode='dosen';render();};
 $('#mMhs').onclick=()=>{mode='mahasiswa';render();};
 $('#ubahProfil').onclick=()=>{const n=prompt('Nama yang tampil di judul:',data.profil.nama);if(n===null)return;
   const p=prompt('Baris kecil di bawah judul:',data.profil.prodi);if(p===null)return;
-  data.profil={nama:n.trim()||'Meja Dosen',prodi:p.trim()};save();render();};
+  data.profil={nama:n.trim()||'Dashboard Ayomi',prodi:p.trim()};save();render();};
 $('#reset').onclick=()=>{if(!confirm('Kosongkan semua data?'))return;
   data={profil:data.profil,kelas:[],bimbingan:[],berkas:[],pengumuman:[],slot:[],aktivitas:[]};save();render();toast('Semua data dikosongkan');};
 
