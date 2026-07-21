@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Meja Dosen</title>
+<title>Dashboard Ayomi</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{--ink:#0E1F1A;--board:#16332B;--board2:#20463A;--line:#2E574A;--paper:#F2F0E6;--chalk:#E7E3D4;
@@ -96,7 +96,7 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="namaDosen">Meja Dosen</h1><div class="sub" id="subDosen"></div></div>
+    <div class="brand"><h1 id="namaDosen">Dashboard Ayomi</h1><div class="sub" id="subDosen"></div></div>
     <div class="akses">
       <span class="kini" id="labelMode">Tampilan mahasiswa</span>
       <button id="btnMasuk">Masuk sebagai dosen</button>
@@ -315,7 +315,7 @@ const hariBerikut=w=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate
 let buka=false,mode='mahasiswa',tab='bimbingan',fBimb='semua',fBerkas='semua',nimSaya='';
 let edit={slot:null,akt:null,kelas:null,berkas:null,peng:null};
 let dosenId=null, kosong=[];
-let data={profil:{nama:'Meja Dosen',prodi:''},kelas:[],slot:[],aktivitas:[],bimbingan:[],berkas:[],pengumuman:[]};
+let data={profil:{nama:'Dashboard Ayomi',prodi:''},kelas:[],slot:[],aktivitas:[],bimbingan:[],berkas:[],pengumuman:[]};
 
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200);}
 const gagal=(e,pesan)=>{console.error(e);toast(pesan+(e&&e.message?' ('+e.message+')':''));};
@@ -385,7 +385,7 @@ function outlookURL(e){const s=encodeURIComponent,a=akhirDari(e);
 function unduhIcs(list,nama){const ev=Array.isArray(list)?list:[list],
   cap=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z',
   br=t=>String(t||'').replace(/[\\;,]/g,' ').replace(/\n/g,'\\n');
-  let baris=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Meja Dosen//ID','METHOD:PUBLISH'];
+  let baris=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Dashboard Ayomi//ID','METHOD:PUBLISH'];
   ev.forEach(e=>{const a=akhirDari(e);
     baris=baris.concat(['BEGIN:VEVENT','UID:'+uid()+'@mejadosen','DTSTAMP:'+cap,
       'DTSTART:'+e.iso.replace(/-/g,'')+'T'+e.jam.replace(':','')+'00',
@@ -813,7 +813,7 @@ $('#simpanPeng').onclick=async()=>{
 $('#ubahProfil').onclick=async()=>{
   const n=prompt('Nama yang tampil di judul:',data.profil.nama);if(n===null)return;
   const p=prompt('Baris kecil di bawah judul:',data.profil.prodi);if(p===null)return;
-  const{error}=await sb.from('dosen').update({nama:n.trim()||'Meja Dosen',prodi:p.trim()}).eq('id',dosenId);
+  const{error}=await sb.from('dosen').update({nama:n.trim()||'Dashboard Ayomi',prodi:p.trim()}).eq('id',dosenId);
   if(error)return gagal(error,'Gagal menyimpan.');muat();};
 
 ['#aTgl','#bTgl','#xTgl','#xTglAkhir','#sTgl','#kMulai'].forEach(s=>$(s).value=today());
