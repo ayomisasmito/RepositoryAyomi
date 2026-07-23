@@ -470,7 +470,7 @@ function renderBimb(){
 function renderJadwal(){
   const per={};kosong.forEach(s=>(per[s.iso]=per[s.iso]||[]).push(s));
   const tgl=Object.keys(per).sort();
-  $('#listTersedia').innerHTML=tgl.length?'<div class="subhead">Jam kosong dua pekan ke depan</div>'+tgl.map(iso=>
+  $('#listTersedia').innerHTML=tgl.length?'<div class="subhead">Jam kosong </div>'+tgl.map(iso=>
     `<div class="day"><h3>${fmtS(iso)}</h3><div class="chips">${per[iso].map(s=>
       `<button class="chip" data-iso="${s.iso}" data-jam="${s.jam}" data-dur="${s.durasi}">${s.jam}–${s.akhir}<small>${esc(s.modeB)}${s.lokasi?' · '+esc(s.lokasi):''}</small></button>`).join('')}</div></div>`).join('')
     :`<div class="empty"><b>Belum ada jam kosong</b>${mode==='dosen'?'Buka jam bimbingan agar mahasiswa bisa memilih waktu.':'Tidak ada jam terbuka. Kamu tetap bisa mengajukan waktu sendiri lewat formulir pengajuan.'}</div>`;
