@@ -1065,10 +1065,10 @@ function renderKuliah(){
   const box=$('#listKuliah');if(!box)return;
   const wk=[];data.kelas.forEach(k=>(k.sesi||[]).forEach(s=>wk.push({k,s})));
   const one=[];data.pengumuman.forEach(p=>{if(p.ganti){const k=data.kelas.find(x=>x.id===p.kelasId);one.push({p,k});}});
-  if(!wk.length&&!one.length){box.innerHTML='<div class="subhead">Jadwal kuliah</div><div class="empty"><b>Belum ada jadwal kuliah</b>Tambahkan pertemuan lewat menu Kelas — otomatis muncul di sini. Pengumuman "kuliah pengganti" juga masuk ke sini.</div>';return;}
+  if(!wk.length&&!one.length){box.innerHTML='<div class="empty"><b>Belum ada jadwal kuliah</b>Tambahkan pertemuan lewat menu Kelas — otomatis muncul di sini. Pengumuman "kuliah pengganti" juga masuk ke sini.</div>';return;}
   wk.sort((a,b)=>a.s.hari-b.s.hari||toMin(a.s.mulaiJam)-toMin(b.s.mulaiJam));
   const byH={};wk.forEach(w=>(byH[w.s.hari]=byH[w.s.hari]||[]).push(w));
-  let html='<div class="subhead">Jadwal kuliah</div>';
+  let html='';
   Object.keys(byH).map(Number).sort((a,b)=>a-b).forEach(h=>{
     html+=`<div class="day"><h3>Setiap ${hari[h]}</h3><div class="rowlist">`+byH[h].map(w=>`<div class="item"><div style="flex:1;min-width:200px"><div class="t">${esc(w.k.kode)} &middot; ${esc(w.k.nama)}</div><div class="s">${esc(w.s.mulaiJam)}&ndash;${esc(w.s.selesaiJam)} &middot; ${esc(w.s.ruang)}</div></div><div style="display:flex;gap:12px"><a class="linkbtn" target="_blank" rel="noreferrer" href="${outlookURL(evSesi(w.k,w.s))}">Outlook</a></div></div>`).join('')+`</div></div>`;
   });
