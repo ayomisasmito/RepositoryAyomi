@@ -325,9 +325,6 @@
         <div class="f"><label for="kMulai">Pekan pertama mulai</label><input id="kMulai" type="date"></div>
         <div class="f"><label for="kPekan">Berulang berapa pekan</label><input id="kPekan" type="number" min="1" max="52" value="16"></div>
       </div>
-      <div class="subhead" style="margin:18px 0 10px">Pertemuan dalam sepekan</div>
-      <div id="sesiRows"></div>
-      <button class="btn ghost" id="tambahSesi" type="button">Tambah pertemuan</button>
       <div class="formact"><button class="btn" id="simpanKelas">Simpan kelas</button>
         <button class="btn ghost" id="batalKelas">Batal</button></div>
     </div>
@@ -387,18 +384,6 @@
     </div>
 
     <div id="poinSaya"></div>
-
-    <div class="formbox dosenOnly" id="formMhs">
-      <h3>Data mahasiswa (roster)</h3>
-      <div class="fields">
-        <div class="f"><label for="mKelas">Mata kuliah</label><select id="mKelas"></select></div>
-        <div class="f"><label for="mNim">NIM</label><input id="mNim" class="mono" placeholder="2110xxxx"></div>
-        <div class="f"><label for="mNama">Nama</label><input id="mNama" placeholder="Nama lengkap"></div>
-      </div>
-      <div class="formact"><button class="btn" id="simpanMhs">Tambah mahasiswa</button>
-        <span class="s" style="color:var(--slate600)">Tip: tempel banyak baris <span class="mono">NIM,Nama</span> sekaligus di kolom NIM.</span></div>
-      <div id="listMhs" style="margin-top:14px"></div>
-    </div>
 
     <div id="listKeaktifan"></div>
   </section>
@@ -674,16 +659,12 @@ function renderKelas(){
   if(!data.kelas.length){$('#listKelas').innerHTML='<div class="empty"><b>Belum ada kelas</b>Tambahkan kelas agar berkas dan pengumuman bisa ditujukan ke sana.</div>';return;}
   $('#listKelas').innerHTML=data.kelas.map(k=>`<div class="card"><div class="kode">${esc(k.kode)}</div>
     <h3>${esc(k.nama)}</h3>
-    <div style="margin-top:10px">${k.sesi.map((s,i)=>`<div class="sesibaris">
-      <span>${hari[s.hari]}, ${esc(s.mulaiJam)}–${esc(s.selesaiJam)}<br><span class="s">${esc(s.ruang)}</span></span>
-      <button class="linkbtn" data-out="${k.id}|${i}">Outlook</button></div>`).join('')}</div>
     <div class="rows">
     <div><span>Mahasiswa</span><span>${esc(k.jml||'—')}</span></div>
     <div><span>Mulai</span><span>${fmt(k.mulai)}</span></div>
     <div><span>Berulang</span><span>${+k.pekan||16} pekan</span></div>
     <div><span>Berkas</span><span>${data.berkas.filter(b=>b.kelasId===k.id).length} berkas</span></div></div>
     <div style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
-      <button class="linkbtn" data-ics="${k.id}">Unduh .ics semua pertemuan</button>
       ${mode==='dosen'?`<button class="linkbtn" data-ubah="${k.id}">Ubah</button>
       <button class="linkbtn" data-del="${k.id}">Hapus</button>`:''}</div></div>`).join('');
   document.querySelectorAll('#listKelas [data-ics]').forEach(b=>b.onclick=()=>{
@@ -761,9 +742,9 @@ function barisSesi(s){const d=document.createElement('div');d.className='sesirow
     <div><button class="linkbtn" type="button" data-hapus="1">Hapus pertemuan</button></div>`;
   d.querySelector('[data-hapus]').onclick=()=>{if($('#sesiRows').children.length<2){toast('Kelas butuh minimal satu pertemuan.');return;}d.remove();};
   return d;}
-const isiSesiRows=list=>{const w=$('#sesiRows');w.innerHTML='';
+const isiSesiRows=list=>{const w=$('#sesiRows');if(!w)return;w.innerHTML='';
   (list&&list.length?list:[null]).forEach(s=>w.appendChild(barisSesi(s)));};
-const bacaSesiRows=()=>[...$('#sesiRows').children].map(r=>({
+const bacaSesiRows=()=>!$('#sesiRows')?[]:[...$('#sesiRows').children].map(r=>({
   hari:+r.querySelector('[data-k="hari"]').value,
   jam_mulai:r.querySelector('[data-k="mulaiJam"]').value,
   jam_selesai:r.querySelector('[data-k="selesaiJam"]').value,
@@ -854,7 +835,7 @@ $('#aSlot').onchange=aturSlotForm;
 $('#sUlang').onchange=()=>{const m=$('#sUlang').value==='mingguan';$('#wrapSHari').hidden=!m;$('#wrapSTgl').hidden=m;};
 $('#xUlang').onchange=aturFormAkt;
 $('#xSeharian').onchange=aturFormAkt;
-$('#tambahSesi').onclick=()=>$('#sesiRows').appendChild(barisSesi(null));
+{const _ts=$('#tambahSesi');if(_ts)_ts.onclick=()=>$('#sesiRows').appendChild(barisSesi(null));}
 
 $('#cariBtn').onclick=async()=>{
   const nim=$('#cariNim').value.trim(),kode=$('#kodeAkses').value.trim();
@@ -946,8 +927,8 @@ $('#simpanKelas').onclick=async()=>{
     await sb.from('kelas_sesi').delete().eq('kelas_id',kelasId);}
   else{const{data:baru,error}=await sb.from('kelas').insert(isi).select().single();
     if(error)return gagal(error,'Gagal menyimpan. Kode kelas mungkin sudah dipakai.');kelasId=baru.id;}
-  const{error:e2}=await sb.from('kelas_sesi').insert(sesi.map(s=>Object.assign({kelas_id:kelasId},s)));
-  if(e2)return gagal(e2,'Kelas tersimpan tapi pertemuannya gagal.');
+  if(sesi.length){const{error:e2}=await sb.from('kelas_sesi').insert(sesi.map(s=>Object.assign({kelas_id:kelasId},s)));
+  if(e2)return gagal(e2,'Kelas tersimpan tapi pertemuannya gagal.');}
   const ubah=!!edit.kelas;$('#toggleKelas').click();resetForm('kelas');
   await muat();toast(ubah?'Kelas diperbarui':'Kelas ditambahkan');};
 
