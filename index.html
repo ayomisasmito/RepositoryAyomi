@@ -190,6 +190,26 @@
     .slip .stamp{position:static;display:inline-block;margin-bottom:10px}
     .modal-card.preview{max-width:100%}
   }
+
+  .kal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .kal-title{font-family:var(--sans);font-weight:900;text-transform:uppercase;font-size:18px}
+  .kal-nav{display:flex;gap:8px}
+  .kal-nav .btn{padding:8px 14px}
+  .kal-wrap{overflow-x:auto;padding-bottom:6px}
+  .kal-grid{display:grid;grid-template-columns:repeat(7,minmax(92px,1fr));gap:6px;min-width:680px}
+  .kal-dow{font-family:var(--mono);font-size:11px;font-weight:800;text-transform:uppercase;color:var(--slate600);text-align:center;padding:4px 0}
+  .kal-cell{background:var(--white);border:2px solid var(--ink);border-radius:12px;min-height:98px;padding:6px;box-shadow:var(--s2);display:flex;flex-direction:column;gap:4px}
+  .kal-cell.out{background:var(--slate50);opacity:.5}
+  .kal-cell.today{border-color:var(--purple);box-shadow:var(--s3)}
+  .kal-date{font-weight:900;font-size:13px}
+  .kal-cell.today .kal-date{color:var(--purple)}
+  .kal-ev{font-size:10px;font-weight:800;border:1.5px solid var(--ink);border-radius:6px;padding:2px 5px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kal-ev.kelas{background:var(--mint);color:var(--ink)}
+  .kal-ev.bimb{background:var(--purple);color:#fff}
+  .kal-ev.ganti{background:var(--pink);color:#fff}
+  .kal-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;font-weight:800}
+  .kal-legend span{display:inline-flex;align-items:center;gap:6px}
+  .kal-dot{width:13px;height:13px;border:1.5px solid var(--ink);border-radius:4px;display:inline-block}
 </style>
 </head>
 <body>
@@ -306,6 +326,7 @@
         <button class="btn" id="simpanAkt">Simpan aktivitas</button>
         <button class="btn ghost" id="batalAkt">Batal</button></div>
     </div>
+    <div class="subhead">Kalender</div><div id="kalender"></div>
     <div class="subhead">Jadwal kuliah</div><div class="rowlist" id="listKuliah"></div>
     <div id="listTersedia"></div>
     <div class="subhead">Jam bimbingan yang dibuka</div><div class="rowlist" id="listSlot"></div>
@@ -652,7 +673,7 @@ function renderBimb(){
     toast('Tersimpan');muat();});}
 
 function renderJadwal(){
-  renderKuliah();
+  renderKuliah();renderKalender();
   const per={};kosong.forEach(s=>(per[s.iso]=per[s.iso]||[]).push(s));
   const tgl=Object.keys(per).sort();
   $('#listTersedia').innerHTML=tgl.length?'<div class="subhead">Jam kosong </div>'+tgl.map(iso=>
@@ -1081,6 +1102,33 @@ function renderKuliah(){
   box.innerHTML=html;
 }
 
+var _kalY=null,_kalM=null;
+function renderKalender(){
+  const host=$('#kalender');if(!host)return;
+  const now=new Date();
+  if(_kalY===null){_kalY=now.getFullYear();_kalM=now.getMonth();}
+  const y=_kalY,m=_kalM;
+  const first=new Date(y,m,1),start=new Date(y,m,1);start.setDate(1-first.getDay());
+  const cells=[],d=new Date(start);
+  for(let i=0;i<42;i++){cells.push(new Date(d));d.setDate(d.getDate()+1);}
+  const evs={},add=(iso,cls,txt)=>{(evs[iso]=evs[iso]||[]).push({cls,txt});};
+  data.kelas.forEach(k=>{const s0=k.mulai?new Date(k.mulai+'T00:00:00'):null,s1=s0?new Date(s0):null;if(s1)s1.setDate(s1.getDate()+((+k.pekan||16)*7));
+    (k.sesi||[]).forEach(s=>cells.forEach(dt=>{if(dt.getDay()===s.hari&&(!s0||(dt>=s0&&dt<=s1)))add(isoOf(dt),'kelas',(s.mulaiJam||'')+' '+k.kode);}));});
+  data.bimbingan.forEach(b=>{if(b.tgl&&b.status!=='usul')add(b.tgl,'bimb',(b.jam||'')+' '+(b.nama||'Bimbingan'));});
+  data.pengumuman.forEach(p=>{if(p.ganti&&p.ganti.tanggal)add(p.ganti.tanggal,'ganti',(p.ganti.mulai||'')+' Pengganti');});
+  const dow=['Min','Sen','Sel','Rab','Kam','Jum','Sab'],todayIso=isoOf(now);
+  let grid='';dow.forEach(x=>grid+=`<div class="kal-dow">${x}</div>`);
+  cells.forEach(dt=>{const ii=isoOf(dt),out=dt.getMonth()!==m,el=evs[ii]||[];
+    grid+=`<div class="kal-cell ${out?'out':''} ${ii===todayIso?'today':''}"><div class="kal-date">${dt.getDate()}</div>${el.slice(0,4).map(e=>`<div class="kal-ev ${e.cls}" title="${esc(e.txt)}">${esc(e.txt)}</div>`).join('')}${el.length>4?`<div class="s" style="font-size:9px;font-weight:800">+${el.length-4} lagi</div>`:''}</div>`;});
+  host.innerHTML=`<div class="kal-head"><div class="kal-title">${bulan[m]} ${y}</div>
+    <div class="kal-nav"><button class="btn ghost" id="kalPrev">&#8249;</button><button class="btn ghost" id="kalToday">Hari ini</button><button class="btn ghost" id="kalNext">&#8250;</button></div></div>
+    <div class="kal-wrap"><div class="kal-grid">${grid}</div></div>
+    <div class="kal-legend"><span><i class="kal-dot" style="background:var(--mint)"></i>Kuliah</span><span><i class="kal-dot" style="background:var(--purple)"></i>Bimbingan</span><span><i class="kal-dot" style="background:var(--pink)"></i>Kuliah pengganti</span></div>`;
+  $('#kalPrev').onclick=()=>{_kalM--;if(_kalM<0){_kalM=11;_kalY--;}renderKalender();};
+  $('#kalNext').onclick=()=>{_kalM++;if(_kalM>11){_kalM=0;_kalY++;}renderKalender();};
+  $('#kalToday').onclick=()=>{const n=new Date();_kalY=n.getFullYear();_kalM=n.getMonth();renderKalender();};
+}
+
 /* ---- Keaktifan ---- */
 var _keaktifan=[],_kkEditId=null;
 async function renderKeaktifan(){
@@ -1136,8 +1184,9 @@ function kkEdit(id){const e=_keaktifan.find(x=>x.id===id);if(!e)return;_kkEditId
   $('#kkEditModal').hidden=false;document.body.style.overflow='hidden';}
 async function delKk(id,self){
   if(!confirm(self?'Hapus catatan keaktifanmu ini?':'Hapus entri keaktifan ini?'))return;
-  const{error}=await sb.from('keaktifan').delete().eq('id',id);
+  const{data:_dd,error}=await sb.from('keaktifan').delete().eq('id',id).select();
   if(error)return gagal(error,'Gagal menghapus.');
+  if(!_dd||!_dd.length){toast('Tidak terhapus — izin DELETE tabel keaktifan belum aktif (lihat catatan SQL).');return;}
   if(!$('#kkEditModal').hidden)tutupModal();
   toast('Keaktifan dihapus');await renderKeaktifan();if($('#kkNim').value.trim())poinSaya();
 }
@@ -1172,8 +1221,8 @@ function exportKeaktifanCSV(){
   };
   const es=$('#ekSimpan');
   if(es)es.onclick=async()=>{if(!_kkEditId)return;const p=($('#ekJenis').value||'Hadir|1').split('|');
-    const{error}=await sb.from('keaktifan').update({jenis:p[0],poin:+p[1]||0,pertemuan:+$('#ekPert').value||1,tanggal:$('#ekTgl').value||today(),catatan:$('#ekCat').value.trim()||null}).eq('id',_kkEditId);
-    if(error)return gagal(error,'Gagal menyimpan.');tutupModal();toast('Keaktifan diperbarui');await renderKeaktifan();if($('#kkNim').value.trim())poinSaya();};
+    const{data:_du,error}=await sb.from('keaktifan').update({jenis:p[0],poin:+p[1]||0,pertemuan:+$('#ekPert').value||1,tanggal:$('#ekTgl').value||today(),catatan:$('#ekCat').value.trim()||null}).eq('id',_kkEditId).select();
+    if(error)return gagal(error,'Gagal menyimpan.');if(!_du||!_du.length){toast('Tidak tersimpan — izin UPDATE tabel keaktifan belum aktif (lihat catatan SQL).');return;}tutupModal();toast('Keaktifan diperbarui');await renderKeaktifan();if($('#kkNim').value.trim())poinSaya();};
   const eh=$('#ekHapus');if(eh)eh.onclick=()=>{if(_kkEditId)delKk(_kkEditId);};
   const ex=$('#exportKeaktifan');if(ex)ex.onclick=exportKeaktifanCSV;
   const ps=$('#lihatPoinSaya');if(ps)ps.onclick=poinSaya;
