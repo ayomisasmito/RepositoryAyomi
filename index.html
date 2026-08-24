@@ -481,6 +481,13 @@
     </div>
   </div>
 </div>
+<div class="modal" id="jadwalModal" hidden>
+  <div class="modal-card" style="max-width:440px">
+    <div class="tiket-head" id="jadwalHead"><span class="tiket-title" id="jadwalKind">Jadwal</span>
+      <button class="modal-x" id="jadwalClose" aria-label="Tutup">&#10005;</button></div>
+    <div class="tiket-scroll" id="jadwalBody"></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -628,8 +635,7 @@ function renderBimb(){
     document.querySelectorAll('#filterBimb button').forEach(b=>b.onclick=()=>{fBimb=b.dataset.f;render();});}
   let l=data.bimbingan.slice().sort((a,b)=>(a.tgl+a.jam).localeCompare(b.tgl+b.jam));
   if(dosen&&fBimb!=='semua')l=l.filter(b=>b.status===fBimb);
-  if(!l.length){$('#listBimb').innerHTML=`<div class="empty"><b>${dosen?'Belum ada slip di sini':'Belum ada pengajuan yang ditampilkan'}</b>${dosen?'Pengajuan yang masuk akan tampil sebagai slip antrean.':'Masukkan NIM dan kode akses untuk melihat status pengajuanmu.'}</div>`;return;}
-  $('#listBimb').innerHTML=l.map(b=>{const bentrok=dosen?bentrokDengan(b.tgl,toMin(b.jam),toMin(b.jam)+(+b.durasi||30)).filter(x=>x!=='bimbingan '+b.nama):[];
+  const slipHTML=b=>{const bentrok=dosen?bentrokDengan(b.tgl,toMin(b.jam),toMin(b.jam)+(+b.durasi||30)).filter(x=>x!=='bimbingan '+b.nama):[];
    return `<article class="slip"><span class="stamp st-${b.status}">${LABEL[b.status]}</span>
     <h3>${esc(b.nama)}</h3>
     <div class="meta">${esc(b.nim)} · ${fmt(b.tgl)} · ${esc(b.jam)}–${toHM(toMin(b.jam)+(+b.durasi||30))} · ${esc(b.modeB)} · ${esc(namaKelas(b.kelasId))}</div>
@@ -645,7 +651,16 @@ function renderBimb(){
       ${b.status!=='selesai'?'<button data-a="selesai">Tandai selesai</button>':''}`:''}
       ${b.status==='disetujui'?'<button data-a="outlook">Tambah ke Outlook</button><button data-a="ics">Unduh .ics</button>':''}
       ${dosen?'<button data-a="hapus" class="bahaya">Hapus</button>':''}
-    </div></article>`;}).join('');
+    </div></article>`;};
+  const lampau=b=>(b.tgl&&b.tgl<today())||b.status==='selesai';
+  const akan=l.filter(b=>!lampau(b)),arsip=l.filter(lampau).reverse();
+  if(!akan.length&&!arsip.length){$('#listBimb').innerHTML=`<div class="empty"><b>${dosen?'Belum ada slip di sini':'Belum ada pengajuan yang ditampilkan'}</b>${dosen?'Pengajuan yang masuk akan tampil sebagai slip antrean.':'Masukkan NIM dan kode akses untuk melihat status pengajuanmu.'}</div>`;return;}
+  let bhtml='<div class="subhead">Akan datang'+(akan.length?' · '+akan.length:'')+'</div>';
+  bhtml+=akan.length?akan.map(slipHTML).join(''):'<div class="empty"><b>Tidak ada yang akan datang</b>Semua pengajuan sudah lewat atau selesai — lihat arsip di bawah.</div>';
+  if(arsip.length){bhtml+=`<div class="subhead" style="display:flex;justify-content:space-between;align-items:center;gap:10px">Arsip (lampau) · ${arsip.length} <button class="linkbtn" id="toggleArsipBimb">${showArsipBimb?'Sembunyikan':'Lihat arsip'}</button></div>`;
+    if(showArsipBimb)bhtml+=arsip.map(slipHTML).join('');}
+  $('#listBimb').innerHTML=bhtml;
+  {const tgB=$('#toggleArsipBimb');if(tgB)tgB.onclick=()=>{showArsipBimb=!showArsipBimb;renderBimb();};}
   document.querySelectorAll('#listBimb .acts button').forEach(btn=>btn.onclick=async()=>{
     const b=data.bimbingan.find(x=>x.id===btn.parentElement.dataset.id),a=btn.dataset.a;
     if(!/^[0-9a-f-]{36}$/i.test(b.id)&&a!=='outlook'&&a!=='ics'&&a!=='tiket'){toast('Muat ulang halaman dulu.');return muat();}
@@ -694,13 +709,19 @@ function renderJadwal(){
     if(error)return gagal(error,'Gagal menghapus.');toast('Jam bimbingan ditutup');muat();});
   const urutAkt=a=>(a.ulang==='mingguan'?'0'+a.hari:'1'+a.tgl);
   const akt=data.aktivitas.slice().sort((a,b)=>urutAkt(a).localeCompare(urutAkt(b)));
-  $('#listAkt').innerHTML=akt.length?akt.map(a=>`<div class="item pin">
+  const aktHTML=a=>`<div class="item pin">
     <div style="flex:1;min-width:200px"><div class="t">${esc(a.judul)}</div>
     <div class="s">${esc(rinciAkt(a))}</div></div>
     <div style="display:flex;gap:12px"><button class="linkbtn" data-ics="${a.id}">Unduh .ics</button>
     ${mode==='dosen'?`<button class="linkbtn" data-ubah="${a.id}">Ubah</button>
-    <button class="linkbtn" data-del="${a.id}">Hapus</button>`:''}</div></div>`).join('')
-    :'<div class="empty"><b>Belum ada aktivitas</b>Catat rapat, cuti, atau acara luar kota supaya jamnya tidak ditawarkan.</div>';
+    <button class="linkbtn" data-del="${a.id}">Hapus</button>`:''}</div></div>`;
+  const lampauAkt=a=>a.ulang!=='mingguan'&&((a.tglAkhir||a.tgl||'')<today());
+  const aktAktif=akt.filter(a=>!lampauAkt(a)),aktArsip=akt.filter(lampauAkt).reverse();
+  let aH=aktAktif.length?aktAktif.map(aktHTML).join(''):'<div class="empty"><b>Belum ada aktivitas</b>Catat rapat, cuti, atau acara luar kota supaya jamnya tidak ditawarkan.</div>';
+  if(aktArsip.length){aH+=`<div class="subhead" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px">Arsip aktivitas · ${aktArsip.length} <button class="linkbtn" id="toggleArsipAkt">${showArsipAkt?'Sembunyikan':'Lihat arsip'}</button></div>`;
+    if(showArsipAkt)aH+=aktArsip.map(aktHTML).join('');}
+  $('#listAkt').innerHTML=aH;
+  {const tgA=$('#toggleArsipAkt');if(tgA)tgA.onclick=()=>{showArsipAkt=!showArsipAkt;renderJadwal();};}
   document.querySelectorAll('#listAkt [data-ics]').forEach(x=>x.onclick=()=>
     unduhIcs(evAkt(data.aktivitas.find(a=>a.id===x.dataset.ics)),'aktivitas'));
   document.querySelectorAll('#listAkt [data-ubah]').forEach(x=>x.onclick=()=>isiFormAkt(x.dataset.ubah));
@@ -759,13 +780,20 @@ function renderBerkas(){
 
 function renderPeng(){
   const l=data.pengumuman.slice().sort((a,b)=>(b.pin?1:0)-(a.pin?1:0)||(b.tgl||'').localeCompare(a.tgl||''));
-  if(!l.length){$('#listPeng').innerHTML='<div class="empty"><b>Belum ada pengumuman</b>Tulis kabar singkat saat jadwal berubah atau tugas dibuka.</div>';return;}
-  $('#listPeng').innerHTML=l.map(p=>`<div class="item ${p.pin?'pin':''}"><div style="flex:1;min-width:220px">
+  const pengHTML=p=>`<div class="item ${p.pin?'pin':''}"><div style="flex:1;min-width:220px">
     <div class="t">${p.pin?'Disematkan · ':''}${esc(p.judul)}</div><div class="d">${esc(p.isi)}</div>${p.ganti?`<div class="s" style="margin-top:6px"><span class="tag" style="background:var(--mint)">Kuliah pengganti</span> ${fmt(p.ganti.tanggal)} &middot; ${esc(p.ganti.mulai)}&ndash;${esc(p.ganti.selesai)} &middot; ${esc(p.ganti.ruang)}</div>`:''}
     <div class="s">${esc(p.kelasId==='semua'?'Semua mahasiswa':namaKelas(p.kelasId))} · ${fmt(p.tgl)}</div></div>
     ${mode==='dosen'?`<div style="display:flex;gap:12px"><button class="linkbtn" data-pin="${p.id}">${p.pin?'Lepas sematan':'Sematkan'}</button>
     <button class="linkbtn" data-ubah="${p.id}">Ubah</button>
-    <button class="linkbtn" data-del="${p.id}">Hapus</button></div>`:''}</div>`).join('');
+    <button class="linkbtn" data-del="${p.id}">Hapus</button></div>`:''}</div>`;
+  if(!l.length){$('#listPeng').innerHTML='<div class="empty"><b>Belum ada pengumuman</b>Tulis kabar singkat saat jadwal berubah atau tugas dibuka.</div>';return;}
+  const lampauP=p=>!p.pin&&((p.ganti?p.ganti.tanggal:p.tgl)||'')<today();
+  const utama=l.filter(p=>!lampauP(p)),arsipP=l.filter(lampauP);
+  let phtml=utama.length?utama.map(pengHTML).join(''):'<div class="empty"><b>Tidak ada pengumuman aktif</b>Yang lama sudah diarsipkan — lihat di bawah.</div>';
+  if(arsipP.length){phtml+=`<div class="subhead" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px">Arsip pengumuman · ${arsipP.length} <button class="linkbtn" id="toggleArsipPeng">${showArsipPeng?'Sembunyikan':'Lihat arsip'}</button></div>`;
+    if(showArsipPeng)phtml+=arsipP.map(pengHTML).join('');}
+  $('#listPeng').innerHTML=phtml;
+  {const tgP=$('#toggleArsipPeng');if(tgP)tgP.onclick=()=>{showArsipPeng=!showArsipPeng;renderPeng();};}
   document.querySelectorAll('#listPeng [data-pin]').forEach(x=>x.onclick=async()=>{
     const p=data.pengumuman.find(p=>p.id===x.dataset.pin);
     const{error}=await sb.from('pengumuman').update({disematkan:!p.pin}).eq('id',p.id);
@@ -1038,7 +1066,7 @@ sb.auth.getSession().then(({data:s})=>{buka=!!s.session;mode=buka?'dosen':'mahas
 /* ===== Tambahan: tiket, preview, jadwal kuliah, keaktifan (detail+hapus+edit) ===== */
 var POIN={Hadir:1,Bertanya:0.5,Menjawab:1,Diskusi:1,Presentasi:3};
 function nf(n){n=+n||0;return Number.isInteger(n)?String(n):n.toFixed(1);}
-function tutupModal(){['#tiketModal','#previewModal','#kkEditModal'].forEach(s=>{const m=$(s);if(m)m.hidden=true;});document.body.style.overflow='';}
+function tutupModal(){['#tiketModal','#previewModal','#kkEditModal','#jadwalModal'].forEach(s=>{const m=$(s);if(m)m.hidden=true;});document.body.style.overflow='';}
 
 function bukaTiket(b){
   const langkah=[['Terkirim',true],['Ditinjau',b.status!=='menunggu'],
@@ -1089,16 +1117,22 @@ function renderKuliah(){
   Object.keys(byH).map(Number).sort((a,b)=>a-b).forEach(h=>{
     html+=`<div class="day"><h3>Setiap ${hari[h]}</h3><div class="rowlist">`+byH[h].map(w=>`<div class="item"><div style="flex:1;min-width:200px"><div class="t">${esc(w.k.kode)} &middot; ${esc(w.k.nama)}</div><div class="s">${esc(w.s.mulaiJam)}&ndash;${esc(w.s.selesaiJam)} &middot; ${esc(w.s.ruang)}</div></div><div style="display:flex;gap:12px"><a class="linkbtn" target="_blank" rel="noreferrer" href="${outlookURL(evSesi(w.k,w.s))}">Outlook</a></div></div>`).join('')+`</div></div>`;
   });
-  if(one.length){one.sort((a,b)=>(a.p.ganti.tanggal||'').localeCompare(b.p.ganti.tanggal||''));
-    html+=`<div class="day"><h3 style="background:var(--pink)">Kuliah pengganti / tambahan</h3><div class="rowlist">`+one.map((o,i)=>`<div class="item pin"><div style="flex:1;min-width:200px"><div class="t">${o.k?esc(o.k.kode)+' &middot; ':''}${esc(o.p.judul)}</div><div class="s">${fmt(o.p.ganti.tanggal)} &middot; ${esc(o.p.ganti.mulai)}&ndash;${esc(o.p.ganti.selesai)} &middot; ${esc(o.p.ganti.ruang)}</div></div><div style="display:flex;gap:12px"><button class="linkbtn" data-one="${i}">Unduh .ics</button></div></div>`).join('')+`</div></div>`;
-    box.innerHTML=html;
-    box.querySelectorAll('[data-one]').forEach(btn=>btn.onclick=()=>{const o=one[+btn.dataset.one],g=o.p.ganti;unduhIcs([{judul:(o.k?o.k.kode+' ':'')+o.p.judul,iso:g.tanggal,jam:g.mulai,durasi:Math.max(30,toMin(g.selesai)-toMin(g.mulai)),lokasi:g.ruang,ket:'Kuliah pengganti'}],'kuliah-pengganti');});
-    return;
+  const pgItem=(o,i)=>`<div class="item pin"><div style="flex:1;min-width:200px"><div class="t">${o.k?esc(o.k.kode)+' &middot; ':''}${esc(o.p.judul)}</div><div class="s">${fmt(o.p.ganti.tanggal)} &middot; ${esc(o.p.ganti.mulai)}&ndash;${esc(o.p.ganti.selesai)} &middot; ${esc(o.p.ganti.ruang)}</div></div><div style="display:flex;gap:12px"><button class="linkbtn" data-one="${i}">Unduh .ics</button></div></div>`;
+  if(one.length){
+    const idx=one.map((o,i)=>i);
+    const akan=idx.filter(i=>(one[i].p.ganti.tanggal||'')>=today()).sort((a,b)=>one[a].p.ganti.tanggal.localeCompare(one[b].p.ganti.tanggal));
+    const lalu=idx.filter(i=>(one[i].p.ganti.tanggal||'')<today()).sort((a,b)=>one[b].p.ganti.tanggal.localeCompare(one[a].p.ganti.tanggal));
+    if(akan.length)html+=`<div class="day"><h3 style="background:var(--pink)">Kuliah pengganti / tambahan</h3><div class="rowlist">`+akan.map(i=>pgItem(one[i],i)).join('')+`</div></div>`;
+    if(lalu.length){html+=`<div class="day"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px">Arsip kuliah pengganti · ${lalu.length} <button class="linkbtn" id="toggleArsipKuliah">${showArsipKuliah?'Sembunyikan':'Lihat arsip'}</button></h3>`;
+      if(showArsipKuliah)html+=`<div class="rowlist">`+lalu.map(i=>pgItem(one[i],i)).join('')+`</div>`;
+      html+=`</div>`;}
   }
   box.innerHTML=html;
+  box.querySelectorAll('[data-one]').forEach(btn=>btn.onclick=()=>{const o=one[+btn.dataset.one],g=o.p.ganti;unduhIcs([{judul:(o.k?o.k.kode+' ':'')+o.p.judul,iso:g.tanggal,jam:g.mulai,durasi:Math.max(30,toMin(g.selesai)-toMin(g.mulai)),lokasi:g.ruang,ket:'Kuliah pengganti'}],'kuliah-pengganti');});
+  {const tgK=$('#toggleArsipKuliah');if(tgK)tgK.onclick=()=>{showArsipKuliah=!showArsipKuliah;renderKuliah();};}
 }
 
-var _kalY=null,_kalM=null;
+var _kalY=null,_kalM=null,_kalEv=[];
 function renderKalender(){
   const host=$('#kalender');if(!host)return;
   const now=new Date();
@@ -1107,15 +1141,15 @@ function renderKalender(){
   const first=new Date(y,m,1),start=new Date(y,m,1);start.setDate(1-first.getDay());
   const cells=[],d=new Date(start);
   for(let i=0;i<42;i++){cells.push(new Date(d));d.setDate(d.getDate()+1);}
-  const evs={},add=(iso,cls,txt)=>{(evs[iso]=evs[iso]||[]).push({cls,txt});};
+  _kalEv=[];const evs={},add=(iso,ev)=>{ev.iso=iso;const i=_kalEv.push(ev)-1;(evs[iso]=evs[iso]||[]).push(i);};
   data.kelas.forEach(k=>{const s0=k.mulai?new Date(k.mulai+'T00:00:00'):null,s1=s0?new Date(s0):null;if(s1)s1.setDate(s1.getDate()+((+k.pekan||16)*7));
-    (k.sesi||[]).forEach(s=>cells.forEach(dt=>{if(dt.getDay()===s.hari&&(!s0||(dt>=s0&&dt<=s1)))add(isoOf(dt),'kelas',(s.mulaiJam||'')+' '+k.kode);}));});
-  data.bimbingan.forEach(b=>{if(b.tgl&&b.status!=='usul')add(b.tgl,'bimb',(b.jam||'')+' '+(b.nama||'Bimbingan'));});
-  data.pengumuman.forEach(p=>{if(p.ganti&&p.ganti.tanggal)add(p.ganti.tanggal,'ganti',(p.ganti.mulai||'')+' Pengganti');});
+    (k.sesi||[]).forEach(s=>cells.forEach(dt=>{if(dt.getDay()===s.hari&&(!s0||(dt>=s0&&dt<=s1)))add(isoOf(dt),{cls:'kelas',short:k.kode,label:k.kode+' · '+k.nama,mulai:s.mulaiJam,selesai:s.selesaiJam,ruang:s.ruang,jenis:'Kuliah'});}));});
+  data.bimbingan.forEach(b=>{if(b.tgl&&b.status!=='usul')add(b.tgl,{cls:'bimb',short:(b.nama||'Bimbingan'),label:(b.nama||'Bimbingan'),mulai:b.jam,selesai:toHM(toMin(b.jam)+(+b.durasi||30)),ruang:b.lokasi||b.modeB||'—',jenis:'Bimbingan'});});
+  data.pengumuman.forEach(p=>{if(p.ganti&&p.ganti.tanggal)add(p.ganti.tanggal,{cls:'ganti',short:'Pengganti',label:p.judul,mulai:p.ganti.mulai,selesai:p.ganti.selesai,ruang:p.ganti.ruang,jenis:'Kuliah pengganti'});});
   const dow=['Min','Sen','Sel','Rab','Kam','Jum','Sab'],todayIso=isoOf(now);
   let grid='';dow.forEach(x=>grid+=`<div class="kal-dow">${x}</div>`);
   cells.forEach(dt=>{const ii=isoOf(dt),out=dt.getMonth()!==m,el=evs[ii]||[];
-    grid+=`<div class="kal-cell ${out?'out':''} ${ii===todayIso?'today':''}"><div class="kal-date">${dt.getDate()}</div>${el.slice(0,4).map(e=>`<div class="kal-ev ${e.cls}" title="${esc(e.txt)}">${esc(e.txt)}</div>`).join('')}${el.length>4?`<div class="s" style="font-size:9px;font-weight:800">+${el.length-4} lagi</div>`:''}</div>`;});
+    grid+=`<div class="kal-cell ${out?'out':''} ${ii===todayIso?'today':''}"><div class="kal-date">${dt.getDate()}</div>${el.slice(0,4).map(i=>{const e=_kalEv[i];return `<div class="kal-ev ${e.cls}" data-ev="${i}" title="Dobel-klik untuk rincian">${esc((e.mulai?e.mulai+' ':'')+e.short)}</div>`;}).join('')}${el.length>4?`<div class="s" style="font-size:9px;font-weight:800">+${el.length-4} lagi</div>`:''}</div>`;});
   host.innerHTML=`<div class="kal-head"><div class="kal-title">${bulan[m]} ${y}</div>
     <div class="kal-nav"><button class="btn ghost" id="kalPrev">&#8249;</button><button class="btn ghost" id="kalToday">Hari ini</button><button class="btn ghost" id="kalNext">&#8250;</button></div></div>
     <div class="kal-wrap"><div class="kal-grid">${grid}</div></div>
@@ -1123,6 +1157,7 @@ function renderKalender(){
   $('#kalPrev').onclick=()=>{_kalM--;if(_kalM<0){_kalM=11;_kalY--;}renderKalender();};
   $('#kalNext').onclick=()=>{_kalM++;if(_kalM>11){_kalM=0;_kalY++;}renderKalender();};
   $('#kalToday').onclick=()=>{const n=new Date();_kalY=n.getFullYear();_kalM=n.getMonth();renderKalender();};
+  host.querySelectorAll('[data-ev]').forEach(c=>c.ondblclick=()=>bukaJadwal(_kalEv[+c.dataset.ev]));
 }
 
 /* ---- Keaktifan ---- */
@@ -1223,6 +1258,27 @@ function exportKeaktifanCSV(){
   const ex=$('#exportKeaktifan');if(ex)ex.onclick=exportKeaktifanCSV;
   const ps=$('#lihatPoinSaya');if(ps)ps.onclick=poinSaya;
 })();
+
+/* ---- Arsip lampau + detail kalender ---- */
+var showArsipBimb=false,showArsipKuliah=false,showArsipAkt=false,showArsipPeng=false;
+function bukaJadwal(e){
+  if(!e)return;
+  const head=$('#jadwalHead'),kind=$('#jadwalKind');
+  const col=e.cls==='bimb'?'var(--purple)':e.cls==='ganti'?'var(--pink)':'var(--mint)';
+  const fg=e.cls==='kelas'?'var(--ink)':'#fff';
+  head.style.background=col;head.style.color=fg;kind.style.color=fg;
+  const xb=$('#jadwalClose');if(xb)xb.style.color=fg;
+  kind.textContent=e.jenis||'Jadwal';
+  $('#jadwalBody').innerHTML=`<div class="tiket-detail">
+    <div class="drow"><span class="ic" style="color:${col}">&#9636;</span><div><span class="k">Acara</span><span class="v">${esc(e.label)}</span></div></div>
+    <div class="drow"><span class="ic" style="color:var(--pink)">&#9635;</span><div><span class="k">Tanggal</span><span class="v">${fmt(e.iso)}</span></div></div>
+    <div class="drow"><span class="ic" style="color:var(--purple)">&#9201;</span><div><span class="k">Mulai &ndash; selesai</span><span class="v mono">${esc(e.mulai||'—')} &ndash; ${esc(e.selesai||'—')}</span></div></div>
+    <div class="drow top"><span class="ic" style="color:var(--mint)">&#8982;</span><div><span class="k">Ruang / tempat</span><span class="v">${esc(e.ruang||'—')}</span></div></div>
+  </div>`;
+  $('#jadwalModal').hidden=false;document.body.style.overflow='hidden';
+}
+(function(){const c=$('#jadwalClose');if(c)c.onclick=tutupModal;
+  const m=$('#jadwalModal');if(m)m.onclick=e=>{if(e.target===m)tutupModal();};})();
 </script>
 </body>
 </html>
