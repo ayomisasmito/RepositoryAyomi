@@ -214,13 +214,15 @@
   .kal-ev.akt{background:var(--yellow);color:var(--ink)}
   .kal-cell{cursor:pointer;transition:box-shadow .1s,transform .08s}
   .kal-cell:hover{box-shadow:var(--s3);transform:translate(-1px,-1px)}
-  .podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:14px 0 4px}
+  .podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:14px 0 4px;perspective:700px}
   .pod{flex:1;max-width:34%;display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
-  .pod-cat{font-size:26px;line-height:1}
-  .pod-1 .pod-cat{animation:catBounce 1s ease-in-out infinite}
-  .pod-2 .pod-cat,.pod-3 .pod-cat{animation:catWiggle 1.7s ease-in-out infinite;transform-origin:50% 90%}
-  @keyframes catBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-  @keyframes catWiggle{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
+  .pod-cat{font-size:28px;line-height:1;transform-style:preserve-3d;will-change:transform;filter:drop-shadow(0 4px 3px rgba(15,23,42,.28))}
+  .pod-1 .pod-cat{font-size:36px;animation:cat3d1 1.5s ease-in-out infinite}
+  .pod-2 .pod-cat{animation:cat3d2 1.9s ease-in-out infinite}
+  .pod-3 .pod-cat{animation:cat3d3 2.1s ease-in-out infinite}
+  @keyframes cat3d1{0%{transform:translateY(0) rotateY(0deg) scale(1)}25%{transform:translateY(-14px) rotateY(180deg) scale(1.12)}50%{transform:translateY(0) rotateY(360deg) scale(1)}75%{transform:translateY(-7px) rotateY(180deg) scale(1.06)}100%{transform:translateY(0) rotateY(360deg) scale(1)}}
+  @keyframes cat3d2{0%,100%{transform:rotateX(0deg) rotateZ(-12deg) translateY(0)}50%{transform:rotateX(28deg) rotateZ(12deg) translateY(-7px)}}
+  @keyframes cat3d3{0%,100%{transform:translateY(0) rotateY(-24deg) rotateX(0deg)}50%{transform:translateY(-9px) rotateY(24deg) rotateX(12deg)}}
   .pod-name{font-weight:900;font-size:12px;margin-top:3px;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pod-pt{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--slate600)}
   .pod-block{width:100%;border:2px solid var(--ink);border-bottom:0;border-radius:12px 12px 0 0;margin-top:6px;box-shadow:var(--s2);display:flex;align-items:flex-start;justify-content:center;font-weight:900;font-size:16px;color:var(--ink);padding-top:6px}
@@ -1214,7 +1216,7 @@ async function renderKeaktifan(){
     const per={};(perK[k.id]||[]).forEach(x=>{const key=x.nim||'-';per[key]=per[key]||{nama:x.nama||'',poin:0,n:0};per[key].poin+=(+x.poin||0);per[key].n++;if(!per[key].nama)per[key].nama=x.nama||'';});
     const board=Object.entries(per).sort((a,b)=>b[1].poin-a[1].poin);
     const top=board.slice(0,3),rest=board.slice(3);
-    const pod=[1,0,2].filter(idx=>top[idx]).map(idx=>{const rank=idx+1,[nim,v]=top[idx],cat=rank===1?'😺':'🐱';
+    const pod=[1,0,2].filter(idx=>top[idx]).map(idx=>{const rank=idx+1,[nim,v]=top[idx],cat=({1:'😻',2:'😼',3:'😸'})[rank]||'🐱';
       return `<div class="pod pod-${rank}"><div class="pod-cat">${cat}</div><div class="pod-name">${esc(v.nama||nim)}</div><div class="pod-pt">${nf(v.poin)} poin</div><div class="pod-block">${rank}</div></div>`;}).join('');
     const low=rest.length?`<button class="linkbtn" data-expand="${k.id}" style="margin-top:6px">${_expBoard[k.id]?'Sembunyikan posisi lain':'Lihat posisi 4+ ('+rest.length+')'}</button>${_expBoard[k.id]?`<div class="rows" style="margin-top:8px">${rest.map(([nim,v],i)=>`<div><span>${i+4}. ${esc(v.nama||nim)} <span class="s" style="color:var(--slate600)">(${esc(nim)})</span></span><span><b>${nf(v.poin)}</b> poin &middot; ${v.n}&times;</span></div>`).join('')}</div>`:''}`:'';
     return `<div class="card"><div class="kode">${esc(k.kode)}</div><h3>${esc(k.nama)}</h3><div class="podium">${pod}</div>${low}</div>`;
