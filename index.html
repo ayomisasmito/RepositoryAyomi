@@ -210,6 +210,24 @@
   .kal-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;font-weight:800}
   .kal-legend span{display:inline-flex;align-items:center;gap:6px}
   .kal-dot{width:13px;height:13px;border:1.5px solid var(--ink);border-radius:4px;display:inline-block}
+
+  .kal-ev.akt{background:var(--yellow);color:var(--ink)}
+  .kal-cell{cursor:pointer;transition:box-shadow .1s,transform .08s}
+  .kal-cell:hover{box-shadow:var(--s3);transform:translate(-1px,-1px)}
+  .podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:14px 0 4px}
+  .pod{flex:1;max-width:34%;display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+  .pod-cat{font-size:26px;line-height:1}
+  .pod-1 .pod-cat{animation:catBounce 1s ease-in-out infinite}
+  .pod-2 .pod-cat,.pod-3 .pod-cat{animation:catWiggle 1.7s ease-in-out infinite;transform-origin:50% 90%}
+  @keyframes catBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+  @keyframes catWiggle{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
+  .pod-name{font-weight:900;font-size:12px;margin-top:3px;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pod-pt{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--slate600)}
+  .pod-block{width:100%;border:2px solid var(--ink);border-bottom:0;border-radius:12px 12px 0 0;margin-top:6px;box-shadow:var(--s2);display:flex;align-items:flex-start;justify-content:center;font-weight:900;font-size:16px;color:var(--ink);padding-top:6px}
+  .pod-1 .pod-block{background:var(--yellow);height:72px}
+  .pod-2 .pod-block{background:var(--slate200);height:52px}
+  .pod-3 .pod-block{background:#F6C99A;height:38px}
+  @media (prefers-reduced-motion:reduce){.pod-cat{animation:none!important}}
 </style>
 </head>
 <body>
@@ -256,7 +274,9 @@
         <div class="f" id="wrapDur" hidden><label for="aDur">Perkiraan lama</label><select id="aDur">
           <option value="20">20 menit</option><option value="30" selected>30 menit</option>
           <option value="45">45 menit</option><option value="60">60 menit</option>
-          <option value="120">120 menit</option><option value="150">150 menit</option></select></div>
+          <option value="120">120 menit</option><option value="150">150 menit</option>
+          <option value="lain">Isi manual…</option></select></div>
+        <div class="f" id="wrapDurManual" hidden><label for="aDurManual">Lama (menit)</label><input id="aDurManual" type="number" min="5" step="5" value="30"></div>
         <div class="f" id="wrapMode" hidden><label for="aMode">Cara bimbingan</label>
           <select id="aMode"><option>Tatap muka</option><option>Daring</option></select></div>
         <div class="f"><label for="aKelas">Terkait</label><select id="aKelas"></select></div>
@@ -481,6 +501,13 @@
     </div>
   </div>
 </div>
+<div class="modal" id="hariModal" hidden>
+  <div class="modal-card" style="max-width:480px">
+    <div class="tiket-head"><span class="tiket-title" id="hariTitle">Agenda</span>
+      <button class="modal-x" id="hariClose" aria-label="Tutup">&#10005;</button></div>
+    <div class="tiket-scroll" id="hariBody"></div>
+  </div>
+</div>
 <div class="modal" id="jadwalModal" hidden>
   <div class="modal-card" style="max-width:440px">
     <div class="tiket-head" id="jadwalHead"><span class="tiket-title" id="jadwalKind">Jadwal</span>
@@ -525,10 +552,12 @@ let data={profil:{nama:'Dashboard Ayomi',prodi:''},kelas:[],slot:[],aktivitas:[]
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200);}
 const gagal=(e,pesan)=>{console.error(e);toast(pesan+(e&&e.message?' ('+e.message+')':''));};
 const namaKelas=id=>{const k=data.kelas.find(k=>k.id===id);return k?k.kode+' · '+k.nama:'Umum'};
+const terkaitText=b=>b.kategori||namaKelas(b.kelasId);
+const terkaitBadge=b=>b.kategori?`<span class="tag" style="background:${b.kategori==='Tugas Akhir'?'var(--purple)':'var(--yellow)'};${b.kategori==='Tugas Akhir'?'color:#fff':''}">${esc(b.kategori)}</span>`:esc(namaKelas(b.kelasId));
 
-const dariBimbingan=x=>({id:x.id,kodeAkses:x.kode_akses||'',nama:x.nama,nim:x.nim,tgl:x.tanggal,jam:jam5(x.jam_mulai),
-  durasi:x.durasi_menit,modeB:x.cara,lokasi:x.lokasi||'',kelasId:x.kelas_id||'',topik:x.topik,
-  status:x.status,balasan:x.catatan_dosen||'',luar:x.di_luar_jadwal});
+const dariBimbingan=x=>{const _m=(x.topik||'').match(/^\[(Tugas Akhir|Umum)\]\s?/);return{id:x.id,kodeAkses:x.kode_akses||'',nama:x.nama,nim:x.nim,tgl:x.tanggal,jam:jam5(x.jam_mulai),
+  durasi:x.durasi_menit,modeB:x.cara,lokasi:x.lokasi||'',kelasId:x.kelas_id||'',kategori:x.kelas_id?null:(_m?_m[1]:null),topik:_m?x.topik.slice(_m[0].length):x.topik,
+  status:x.status,balasan:x.catatan_dosen||'',luar:x.di_luar_jadwal};};
 
 async function muat(){
   try{
@@ -638,7 +667,7 @@ function renderBimb(){
   const slipHTML=b=>{const bentrok=dosen?bentrokDengan(b.tgl,toMin(b.jam),toMin(b.jam)+(+b.durasi||30)).filter(x=>x!=='bimbingan '+b.nama):[];
    return `<article class="slip"><span class="stamp st-${b.status}">${LABEL[b.status]}</span>
     <h3>${esc(b.nama)}</h3>
-    <div class="meta">${esc(b.nim)} · ${fmt(b.tgl)} · ${esc(b.jam)}–${toHM(toMin(b.jam)+(+b.durasi||30))} · ${esc(b.modeB)} · ${esc(namaKelas(b.kelasId))}</div>
+    <div class="meta">${esc(b.nim)} · ${fmt(b.tgl)} · ${esc(b.jam)}–${toHM(toMin(b.jam)+(+b.durasi||30))} · ${esc(b.modeB)} · ${terkaitBadge(b)}</div>
     <div class="body">${esc(b.topik)}</div>
     ${b.lokasi?`<div class="meta" style="margin-top:6px">Tempat: ${esc(b.lokasi)}</div>`:''}
     ${b.luar?'<div class="meta" style="margin-top:6px">Diajukan di luar jam bimbingan</div>':''}
@@ -804,7 +833,8 @@ function renderPeng(){
     if(error)return gagal(error,'Gagal menghapus.');toast('Pengumuman dihapus');muat();});}
 
 function aturSlotForm(){const lain=$('#aSlot').value==='lain';
-  ['#wrapTgl','#wrapJam','#wrapDur','#wrapMode'].forEach(s=>$(s).hidden=!lain);cekWaktuUsulan();}
+  ['#wrapTgl','#wrapJam','#wrapDur','#wrapMode'].forEach(s=>$(s).hidden=!lain);
+  $('#wrapDurManual').hidden=!(lain&&$('#aDur').value==='lain');cekWaktuUsulan();}
 function cekWaktuUsulan(){const el=$('#catatanWaktu');
   if($('#aSlot').value!=='lain'){el.textContent='';return;}
   const tgl=$('#aTgl').value||today(),jam=$('#aJam').value||'09:00',dur=+$('#aDur').value||30;
@@ -878,7 +908,7 @@ function resetForm(k){edit[k]=null;
 function fillSelects(){
   const o=data.kelas.map(k=>`<option value="${k.id}">${esc(k.kode)} · ${esc(k.nama)}</option>`).join('');
   const aK=$('#aKelas').value,bK=$('#bKelas').value,pK=$('#pKelas').value;
-  $('#aKelas').innerHTML='<option value="">Tugas akhir / umum</option>'+o;
+  $('#aKelas').innerHTML='<option value="umum">Umum</option><option value="ta">Tugas Akhir</option>'+o;
   $('#bKelas').innerHTML=o||'<option value="">Belum ada kelas</option>';
   $('#pKelas').innerHTML='<option value="semua">Semua mahasiswa</option>'+o;
   if(aK)$('#aKelas').value=aK; if(bK)$('#bKelas').value=bK; if(pK)$('#pKelas').value=pK;
@@ -952,11 +982,13 @@ $('#kirimAjuan').onclick=async()=>{
     const asal=kosong.find(s=>s.iso===i&&s.jam===j);
     if(!asal){toast('Jam itu baru saja terisi. Pilih jam lain.');await muat();return;}
     modeB=asal.modeB;lokasi=asal.lokasi;}
-  else{tgl=$('#aTgl').value||today();jam=$('#aJam').value||'09:00';durasi=+$('#aDur').value||30;luar=true;}
+  else{tgl=$('#aTgl').value||today();jam=$('#aJam').value||'09:00';durasi=($('#aDur').value==='lain'?(+$('#aDurManual').value||30):(+$('#aDur').value||30));luar=true;}
+  const _terk=$('#aKelas').value;let kelasId=null,topikKirim=topik;
+  if(_terk==='ta')topikKirim='[Tugas Akhir] '+topik;else if(_terk==='umum')topikKirim='[Umum] '+topik;else if(_terk)kelasId=_terk;
   const btn=$('#kirimAjuan');btn.disabled=true;
   const{data:hasil,error}=await sb.rpc('ajukan_bimbingan',{p_nama:nama,p_nim:nim,p_tanggal:tgl,
     p_jam:jam+':00',p_durasi:durasi,p_cara:modeB,p_lokasi:lokasi,
-    p_kelas:$('#aKelas').value||null,p_topik:topik,p_di_luar:luar});
+    p_kelas:kelasId,p_topik:topikKirim,p_di_luar:luar});
   btn.disabled=false;
   if(error)return gagal(error,'Pengajuan gagal terkirim.');
   const kode=hasil[0].kode_akses;
@@ -1066,7 +1098,7 @@ sb.auth.getSession().then(({data:s})=>{buka=!!s.session;mode=buka?'dosen':'mahas
 /* ===== Tambahan: tiket, preview, jadwal kuliah, keaktifan (detail+hapus+edit) ===== */
 var POIN={Hadir:1,Bertanya:0.5,Menjawab:1,Diskusi:1,Presentasi:3};
 function nf(n){n=+n||0;return Number.isInteger(n)?String(n):n.toFixed(1);}
-function tutupModal(){['#tiketModal','#previewModal','#kkEditModal','#jadwalModal'].forEach(s=>{const m=$(s);if(m)m.hidden=true;});document.body.style.overflow='';}
+function tutupModal(){['#tiketModal','#previewModal','#kkEditModal','#jadwalModal','#hariModal'].forEach(s=>{const m=$(s);if(m)m.hidden=true;});document.body.style.overflow='';}
 
 function bukaTiket(b){
   const langkah=[['Terkirim',true],['Ditinjau',b.status!=='menunggu'],
@@ -1081,7 +1113,7 @@ function bukaTiket(b){
       <div class="drow"><span class="ic" style="color:var(--purple)">&#9673;</span><div><span class="k">Mahasiswa</span><span class="v">${esc(b.nama)} <span class="s mono">(${esc(b.nim)})</span></span></div></div>
       <div class="drow"><span class="ic" style="color:var(--pink)">&#9201;</span><div><span class="k">Waktu &amp; durasi</span><span class="v">${fmt(b.tgl)} <span class="mono" style="color:var(--purple)">${esc(b.jam)}&ndash;${akhir} (${b.durasi||30}m)</span></span></div></div>
       <div class="drow"><span class="ic" style="color:var(--mint)">&#8982;</span><div><span class="k">Mode &amp; lokasi</span><span class="v">${esc(b.modeB)}${b.lokasi?' ('+esc(b.lokasi)+')':''}</span></div></div>
-      <div class="drow top"><span class="ic" style="color:#B8860B">&#9636;</span><div><span class="k">Mata kuliah / topik</span><span class="v mono" style="color:var(--purple)">${esc(namaKelas(b.kelasId))}</span><p class="topik">&ldquo;${esc(b.topik)}&rdquo;</p></div></div>
+      <div class="drow top"><span class="ic" style="color:#B8860B">&#9636;</span><div><span class="k">Mata kuliah / topik</span><span class="v mono" style="color:var(--purple)">${esc(terkaitText(b))}</span><p class="topik">&ldquo;${esc(b.topik)}&rdquo;</p></div></div>
       ${b.balasan?`<div class="tiket-note"><b>Catatan dosen:</b> ${esc(b.balasan)}</div>`:''}
     </div>
     <div class="tiket-acts">
@@ -1146,18 +1178,20 @@ function renderKalender(){
     (k.sesi||[]).forEach(s=>cells.forEach(dt=>{if(dt.getDay()===s.hari&&(!s0||(dt>=s0&&dt<=s1)))add(isoOf(dt),{cls:'kelas',short:k.kode,label:k.kode+' · '+k.nama,mulai:s.mulaiJam,selesai:s.selesaiJam,ruang:s.ruang,jenis:'Kuliah'});}));});
   data.bimbingan.forEach(b=>{if(b.tgl&&b.status!=='usul')add(b.tgl,{cls:'bimb',short:(b.nama||'Bimbingan'),label:(b.nama||'Bimbingan'),mulai:b.jam,selesai:toHM(toMin(b.jam)+(+b.durasi||30)),ruang:b.lokasi||b.modeB||'—',jenis:'Bimbingan'});});
   data.pengumuman.forEach(p=>{if(p.ganti&&p.ganti.tanggal)add(p.ganti.tanggal,{cls:'ganti',short:'Pengganti',label:p.judul,mulai:p.ganti.mulai,selesai:p.ganti.selesai,ruang:p.ganti.ruang,jenis:'Kuliah pengganti'});});
+  data.aktivitas.forEach(a=>{const mk=dt=>add(isoOf(dt),{cls:'akt',short:a.judul,label:a.judul,mulai:a.seharian?'':a.mulai,selesai:a.seharian?'':a.selesai,ruang:a.lokasi||'',jenis:'Aktivitas'});
+    cells.forEach(dt=>{const ii=isoOf(dt);if(a.ulang==='mingguan'){if(dt.getDay()===a.hari)mk(dt);}else if(a.ulang==='rentang'){if(a.tgl&&ii>=a.tgl&&ii<=(a.tglAkhir||a.tgl))mk(dt);}else if(a.tgl&&ii===a.tgl)mk(dt);});});
   const dow=['Min','Sen','Sel','Rab','Kam','Jum','Sab'],todayIso=isoOf(now);
   let grid='';dow.forEach(x=>grid+=`<div class="kal-dow">${x}</div>`);
   cells.forEach(dt=>{const ii=isoOf(dt),out=dt.getMonth()!==m,el=evs[ii]||[];
-    grid+=`<div class="kal-cell ${out?'out':''} ${ii===todayIso?'today':''}"><div class="kal-date">${dt.getDate()}</div>${el.slice(0,4).map(i=>{const e=_kalEv[i];return `<div class="kal-ev ${e.cls}" data-ev="${i}" title="Dobel-klik untuk rincian">${esc((e.mulai?e.mulai+' ':'')+e.short)}</div>`;}).join('')}${el.length>4?`<div class="s" style="font-size:9px;font-weight:800">+${el.length-4} lagi</div>`:''}</div>`;});
+    grid+=`<div class="kal-cell ${out?'out':''} ${ii===todayIso?'today':''}" data-iso="${ii}"><div class="kal-date">${dt.getDate()}</div>${el.slice(0,4).map(i=>{const e=_kalEv[i];return `<div class="kal-ev ${e.cls}" data-ev="${i}" title="Dobel-klik untuk rincian">${esc((e.mulai?e.mulai+' ':'')+e.short)}</div>`;}).join('')}${el.length>4?`<div class="s" style="font-size:9px;font-weight:800">+${el.length-4} lagi</div>`:''}</div>`;});
   host.innerHTML=`<div class="kal-head"><div class="kal-title">${bulan[m]} ${y}</div>
     <div class="kal-nav"><button class="btn ghost" id="kalPrev">&#8249;</button><button class="btn ghost" id="kalToday">Hari ini</button><button class="btn ghost" id="kalNext">&#8250;</button></div></div>
     <div class="kal-wrap"><div class="kal-grid">${grid}</div></div>
-    <div class="kal-legend"><span><i class="kal-dot" style="background:var(--mint)"></i>Kuliah</span><span><i class="kal-dot" style="background:var(--purple)"></i>Bimbingan</span><span><i class="kal-dot" style="background:var(--pink)"></i>Kuliah pengganti</span></div>`;
+    <div class="kal-legend"><span><i class="kal-dot" style="background:var(--mint)"></i>Kuliah</span><span><i class="kal-dot" style="background:var(--purple)"></i>Bimbingan</span><span><i class="kal-dot" style="background:var(--pink)"></i>Kuliah pengganti</span><span><i class="kal-dot" style="background:var(--yellow)"></i>Aktivitas</span></div>`;
   $('#kalPrev').onclick=()=>{_kalM--;if(_kalM<0){_kalM=11;_kalY--;}renderKalender();};
   $('#kalNext').onclick=()=>{_kalM++;if(_kalM>11){_kalM=0;_kalY++;}renderKalender();};
   $('#kalToday').onclick=()=>{const n=new Date();_kalY=n.getFullYear();_kalM=n.getMonth();renderKalender();};
-  host.querySelectorAll('[data-ev]').forEach(c=>c.ondblclick=()=>bukaJadwal(_kalEv[+c.dataset.ev]));
+  host.querySelectorAll('.kal-cell[data-iso]').forEach(c=>c.onclick=()=>bukaHari(c.dataset.iso));
 }
 
 /* ---- Keaktifan ---- */
@@ -1179,19 +1213,25 @@ async function renderKeaktifan(){
   else{box.innerHTML='<div class="subhead">Papan keaktifan per kelas</div><div class="grid">'+kelasList.map(k=>{
     const per={};(perK[k.id]||[]).forEach(x=>{const key=x.nim||'-';per[key]=per[key]||{nama:x.nama||'',poin:0,n:0};per[key].poin+=(+x.poin||0);per[key].n++;if(!per[key].nama)per[key].nama=x.nama||'';});
     const board=Object.entries(per).sort((a,b)=>b[1].poin-a[1].poin);
-    return `<div class="card"><div class="kode">${esc(k.kode)}</div><h3>${esc(k.nama)}</h3>
-      <div class="rows" style="margin-top:12px">${board.map(([nim,v],i)=>`<div><span>${i<3?`<b style="color:${medal[i]}">${i+1}</b>`:`${i+1}.`} ${esc(v.nama||nim)} <span class="s" style="color:var(--slate600)">(${esc(nim)})</span></span><span><b>${nf(v.poin)}</b> poin &middot; ${v.n}&times;</span></div>`).join('')}</div></div>`;
-  }).join('')+'</div>';}
+    const top=board.slice(0,3),rest=board.slice(3);
+    const pod=[1,0,2].filter(idx=>top[idx]).map(idx=>{const rank=idx+1,[nim,v]=top[idx],cat=rank===1?'😺':'🐱';
+      return `<div class="pod pod-${rank}"><div class="pod-cat">${cat}</div><div class="pod-name">${esc(v.nama||nim)}</div><div class="pod-pt">${nf(v.poin)} poin</div><div class="pod-block">${rank}</div></div>`;}).join('');
+    const low=rest.length?`<button class="linkbtn" data-expand="${k.id}" style="margin-top:6px">${_expBoard[k.id]?'Sembunyikan posisi lain':'Lihat posisi 4+ ('+rest.length+')'}</button>${_expBoard[k.id]?`<div class="rows" style="margin-top:8px">${rest.map(([nim,v],i)=>`<div><span>${i+4}. ${esc(v.nama||nim)} <span class="s" style="color:var(--slate600)">(${esc(nim)})</span></span><span><b>${nf(v.poin)}</b> poin &middot; ${v.n}&times;</span></div>`).join('')}</div>`:''}`:'';
+    return `<div class="card"><div class="kode">${esc(k.kode)}</div><h3>${esc(k.nama)}</h3><div class="podium">${pod}</div>${low}</div>`;
+  }).join('')+'</div>';
+  box.querySelectorAll('[data-expand]').forEach(b=>b.onclick=()=>{_expBoard[b.dataset.expand]=!_expBoard[b.dataset.expand];renderKeaktifan();});}
   // dosen: kelola tiap entri
   const log=$('#kkLog');
   if(log){
     if(mode!=='dosen'||!rows.length){log.innerHTML='';}
     else{const byK={};rows.forEach(x=>(byK[x.kelas_id]=byK[x.kelas_id]||[]).push(x));
-      log.innerHTML='<div class="subhead">Kelola entri keaktifan (dosen)</div>'+Object.keys(byK).map(kid=>{const k=data.kelas.find(c=>c.id===kid);
+      const inner=Object.keys(byK).map(kid=>{const k=data.kelas.find(c=>c.id===kid);
         return `<div class="day"><h3>${k?esc(k.kode)+' &middot; '+esc(k.nama):'Kelas lain'}</h3><div class="rowlist">${byK[kid].slice(0,80).map(x=>`<div class="item"><div style="flex:1;min-width:220px"><div class="t">${esc(x.nama||'-')} <span class="s mono" style="color:var(--slate600)">(${esc(x.nim||'-')})</span></div><div class="s">${esc(x.jenis||'-')} +${nf(+x.poin||0)} &middot; ${x.tanggal?fmt(x.tanggal):'-'}${x.pertemuan?' &middot; Pert '+x.pertemuan:''}${x.catatan?' &middot; '+esc(x.catatan):''}</div></div><div style="display:flex;gap:12px"><button class="linkbtn" data-kkedit="${x.id}">Ubah</button><button class="linkbtn" style="color:var(--pink)" data-kkdel="${x.id}">Hapus</button></div></div>`).join('')}</div></div>`;
       }).join('');
-      log.querySelectorAll('[data-kkedit]').forEach(b=>b.onclick=()=>kkEdit(b.dataset.kkedit));
-      log.querySelectorAll('[data-kkdel]').forEach(b=>b.onclick=()=>delKk(b.dataset.kkdel));
+      log.innerHTML=`<div class="subhead" style="display:flex;justify-content:space-between;align-items:center;gap:10px">Kelola entri keaktifan (dosen) <button class="linkbtn" id="toggleKelola">${showKelola?'Sembunyikan':'Tampilkan'}</button></div>`+(showKelola?inner:'');
+      {const tgL=$('#toggleKelola');if(tgL)tgL.onclick=()=>{showKelola=!showKelola;renderKeaktifan();};}
+      if(showKelola){log.querySelectorAll('[data-kkedit]').forEach(b=>b.onclick=()=>kkEdit(b.dataset.kkedit));
+      log.querySelectorAll('[data-kkdel]').forEach(b=>b.onclick=()=>delKk(b.dataset.kkdel));}
     }
   }
 }
@@ -1264,8 +1304,8 @@ var showArsipBimb=false,showArsipKuliah=false,showArsipAkt=false,showArsipPeng=f
 function bukaJadwal(e){
   if(!e)return;
   const head=$('#jadwalHead'),kind=$('#jadwalKind');
-  const col=e.cls==='bimb'?'var(--purple)':e.cls==='ganti'?'var(--pink)':'var(--mint)';
-  const fg=e.cls==='kelas'?'var(--ink)':'#fff';
+  const col=e.cls==='bimb'?'var(--purple)':e.cls==='ganti'?'var(--pink)':e.cls==='akt'?'var(--yellow)':'var(--mint)';
+  const fg=(e.cls==='kelas'||e.cls==='akt')?'var(--ink)':'#fff';
   head.style.background=col;head.style.color=fg;kind.style.color=fg;
   const xb=$('#jadwalClose');if(xb)xb.style.color=fg;
   kind.textContent=e.jenis||'Jadwal';
@@ -1279,6 +1319,19 @@ function bukaJadwal(e){
 }
 (function(){const c=$('#jadwalClose');if(c)c.onclick=tutupModal;
   const m=$('#jadwalModal');if(m)m.onclick=e=>{if(e.target===m)tutupModal();};})();
+
+/* ---- v5: agenda harian, podium, toggle kelola, durasi manual ---- */
+var showKelola=false,_expBoard={};
+function bukaHari(iso){
+  const list=_kalEv.filter(e=>e.iso===iso).sort((a,b)=>(a.mulai||'').localeCompare(b.mulai||''));
+  $('#hariTitle').textContent=fmt(iso);
+  const warna={kelas:'var(--mint)',bimb:'var(--purple)',ganti:'var(--pink)',akt:'var(--yellow)'};
+  $('#hariBody').innerHTML=list.length?`<div class="rowlist">`+list.map(e=>`<div class="item" style="border-left:8px solid ${warna[e.cls]||'var(--mint)'}"><div style="flex:1;min-width:180px"><div class="t">${esc(e.label)}</div><div class="s">${esc(e.jenis)}${(e.mulai||e.selesai)?' &middot; '+esc(e.mulai||'—')+'–'+esc(e.selesai||'—'):''}${e.ruang?' &middot; '+esc(e.ruang):''}</div></div></div>`).join('')+`</div>`:'<div class="empty"><b>Tidak ada agenda</b>Hari ini kosong.</div>';
+  $('#hariModal').hidden=false;document.body.style.overflow='hidden';
+}
+(function(){const c=$('#hariClose');if(c)c.onclick=tutupModal;
+  const m=$('#hariModal');if(m)m.onclick=e=>{if(e.target===m)tutupModal();};
+  const ad=$('#aDur');if(ad)ad.onchange=()=>{const w=$('#wrapDurManual');if(w)w.hidden=ad.value!=='lain';};})();
 </script>
 </body>
 </html>
