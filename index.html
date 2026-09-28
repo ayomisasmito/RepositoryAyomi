@@ -365,8 +365,14 @@
         <div class="f"><label for="kJml">Jumlah mahasiswa</label><input id="kJml" type="number" min="0" placeholder="40"></div>
         <div class="f"><label for="kMulai">Pekan pertama mulai</label><input id="kMulai" type="date"></div>
         <div class="f"><label for="kPekan">Berulang berapa pekan</label><input id="kPekan" type="number" min="1" max="52" value="16"></div>
-        <div class="f"><label for="kUts">Pekan UTS (opsional)</label><input id="kUts" type="number" min="1" max="52" placeholder="mis. 8"></div>
-        <div class="f"><label for="kUas">Pekan UAS (opsional)</label><input id="kUas" type="number" min="1" max="52" placeholder="mis. 16"></div>
+        <div class="f"><label for="kUtsTgl">Tanggal UTS</label><input id="kUtsTgl" type="date"></div>
+        <div class="f"><label for="kUtsMulai">UTS mulai</label><input id="kUtsMulai" type="time"></div>
+        <div class="f"><label for="kUtsSelesai">UTS selesai</label><input id="kUtsSelesai" type="time"></div>
+        <div class="f"><label for="kUtsRuang">Ruang UTS</label><input id="kUtsRuang" placeholder="C-212 / Daring"></div>
+        <div class="f"><label for="kUasTgl">Tanggal UAS</label><input id="kUasTgl" type="date"></div>
+        <div class="f"><label for="kUasMulai">UAS mulai</label><input id="kUasMulai" type="time"></div>
+        <div class="f"><label for="kUasSelesai">UAS selesai</label><input id="kUasSelesai" type="time"></div>
+        <div class="f"><label for="kUasRuang">Ruang UAS</label><input id="kUasRuang" placeholder="C-212 / Daring"></div>
       </div>
       <div class="subhead" style="margin:18px 0 10px">Pertemuan dalam sepekan</div>
       <div id="sesiRows"></div>
@@ -573,7 +579,7 @@ async function muat(){
     if(d.data && d.data[0]){ dosenId=d.data[0].id;
       data.profil={nama:d.data[0].nama,prodi:d.data[0].prodi||''}; }
     data.kelas=(k.data||[]).map(x=>({id:x.id,kode:x.kode,nama:x.nama,jml:x.jumlah_mahasiswa,
-      mulai:x.tanggal_mulai,pekan:x.jumlah_pekan,utsPekan:x.uts_pekan||null,uasPekan:x.uas_pekan||null,
+      mulai:x.tanggal_mulai,pekan:x.jumlah_pekan,utsTgl:x.uts_tanggal||'',utsMulai:x.uts_mulai?jam5(x.uts_mulai):'',utsSelesai:x.uts_selesai?jam5(x.uts_selesai):'',utsRuang:x.uts_ruang||'',uasTgl:x.uas_tanggal||'',uasMulai:x.uas_mulai?jam5(x.uas_mulai):'',uasSelesai:x.uas_selesai?jam5(x.uas_selesai):'',uasRuang:x.uas_ruang||'',
       sesi:(x.kelas_sesi||[]).sort((m,n)=>m.hari-n.hari).map(s=>({id:s.id,hari:s.hari,
         mulaiJam:jam5(s.jam_mulai),selesaiJam:jam5(s.jam_selesai),ruang:s.ruang||'—'}))}));
     data.slot=(s.data||[]).map(x=>({id:x.id,ulang:x.ulang,hari:x.hari,tgl:x.tanggal||'',
@@ -770,7 +776,8 @@ function renderKelas(){
     <div><span>Mahasiswa</span><span>${esc(k.jml||'—')}</span></div>
     <div><span>Mulai</span><span>${fmt(k.mulai)}</span></div>
     <div><span>Berulang</span><span>${+k.pekan||16} pekan</span></div>
-    ${(k.utsPekan||k.uasPekan)?`<div><span>Ujian</span><span>${k.utsPekan?'UTS pekan '+k.utsPekan:''}${k.utsPekan&&k.uasPekan?' · ':''}${k.uasPekan?'UAS pekan '+k.uasPekan:''}</span></div>`:''}
+    ${k.utsTgl?`<div><span>UTS</span><span>${fmt(k.utsTgl)}${k.utsMulai?' · '+esc(k.utsMulai)+(k.utsSelesai?'–'+esc(k.utsSelesai):''):''}${k.utsRuang?' · '+esc(k.utsRuang):''}</span></div>`:''}
+    ${k.uasTgl?`<div><span>UAS</span><span>${fmt(k.uasTgl)}${k.uasMulai?' · '+esc(k.uasMulai)+(k.uasSelesai?'–'+esc(k.uasSelesai):''):''}${k.uasRuang?' · '+esc(k.uasRuang):''}</span></div>`:''}
     <div><span>Berkas</span><span>${data.berkas.filter(b=>b.kelasId===k.id).length} berkas</span></div></div>
     <div style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="linkbtn" data-ics="${k.id}">Unduh .ics semua pertemuan</button>
@@ -882,7 +889,7 @@ function isiFormAkt(id){const a=data.aktivitas.find(a=>a.id===id);edit.akt=id;
   bukaForm('#formAkt','#toggleAkt','Tutup');}
 function isiFormKelas(id){const k=data.kelas.find(k=>k.id===id);edit.kelas=id;
   $('#kKode').value=k.kode;$('#kNama').value=k.nama;$('#kJml').value=k.jml||'';
-  $('#kMulai').value=k.mulai;$('#kPekan').value=k.pekan;$('#kUts').value=k.utsPekan||'';$('#kUas').value=k.uasPekan||'';isiSesiRows(k.sesi);
+  $('#kMulai').value=k.mulai;$('#kPekan').value=k.pekan;$('#kUtsTgl').value=k.utsTgl||'';$('#kUtsMulai').value=k.utsMulai||'';$('#kUtsSelesai').value=k.utsSelesai||'';$('#kUtsRuang').value=k.utsRuang||'';$('#kUasTgl').value=k.uasTgl||'';$('#kUasMulai').value=k.uasMulai||'';$('#kUasSelesai').value=k.uasSelesai||'';$('#kUasRuang').value=k.uasRuang||'';isiSesiRows(k.sesi);
   $('#judulFormKelas').textContent='Ubah kelas';$('#simpanKelas').textContent='Perbarui kelas';
   bukaForm('#formKelas','#toggleKelas','Tutup');}
 function isiFormBerkas(id){const b=data.berkas.find(b=>b.id===id);edit.berkas=id;
@@ -901,7 +908,7 @@ function resetForm(k){edit[k]=null;
   if(k==='akt'){$('#judulFormAkt').textContent='Aktivitas yang menutup jam';$('#simpanAkt').textContent='Simpan aktivitas';
     $('#xJudul').value='';$('#xLokasi').value='';$('#xSeharian').checked=false;aturFormAkt();}
   if(k==='kelas'){$('#judulFormKelas').textContent='Kelas baru';$('#simpanKelas').textContent='Simpan kelas';
-    ['#kKode','#kNama','#kJml','#kUts','#kUas'].forEach(s=>$(s).value='');isiSesiRows(null);}
+    ['#kKode','#kNama','#kJml','#kUtsTgl','#kUtsMulai','#kUtsSelesai','#kUtsRuang','#kUasTgl','#kUasMulai','#kUasSelesai','#kUasRuang'].forEach(s=>$(s).value='');isiSesiRows(null);}
   if(k==='berkas'){$('#judulFormBerkas').textContent='Berkas baru';$('#simpanBerkas').textContent='Simpan berkas';
     ['#bJudul','#bUrl','#bCat'].forEach(s=>$(s).value='');if($('#bFile'))$('#bFile').value='';}
   if(k==='peng'){$('#judulFormPeng').textContent='Pengumuman baru';$('#simpanPeng').textContent='Terbitkan';
@@ -1042,9 +1049,10 @@ $('#simpanKelas').onclick=async()=>{
     return toast('Setiap pertemuan harus selesai setelah jam mulainya.');
   const isi={dosen_id:dosenId,kode,nama,jumlah_mahasiswa:$('#kJml').value?+$('#kJml').value:null,
     tanggal_mulai:$('#kMulai').value||today(),jumlah_pekan:+$('#kPekan').value||16,
-    uts_pekan:$('#kUts').value?+$('#kUts').value:null,uas_pekan:$('#kUas').value?+$('#kUas').value:null};
-  const _noUjian=o=>{const c=Object.assign({},o);delete c.uts_pekan;delete c.uas_pekan;return c;};
-  const _kolomHilang=e=>e&&/uts_pekan|uas_pekan|column|schema cache/i.test(e.message||'');
+    uts_tanggal:$('#kUtsTgl').value||null,uts_mulai:$('#kUtsMulai').value||null,uts_selesai:$('#kUtsSelesai').value||null,uts_ruang:$('#kUtsRuang').value.trim()||null,
+    uas_tanggal:$('#kUasTgl').value||null,uas_mulai:$('#kUasMulai').value||null,uas_selesai:$('#kUasSelesai').value||null,uas_ruang:$('#kUasRuang').value.trim()||null};
+  const _noUjian=o=>{const c=Object.assign({},o);['uts_tanggal','uts_mulai','uts_selesai','uts_ruang','uas_tanggal','uas_mulai','uas_selesai','uas_ruang'].forEach(k=>delete c[k]);return c;};
+  const _kolomHilang=e=>e&&/uts_|uas_|column|schema cache/i.test(e.message||'');
   let kelasId=edit.kelas;
   if(kelasId){let{error}=await sb.from('kelas').update(isi).eq('id',kelasId);
     if(_kolomHilang(error)){({error}=await sb.from('kelas').update(_noUjian(isi)).eq('id',kelasId));if(!error)toast('Kelas tersimpan; kolom UTS/UAS belum ada (jalankan SQL di catatan).');}
@@ -1181,8 +1189,13 @@ function renderKalender(){
   const cells=[],d=new Date(start);
   for(let i=0;i<42;i++){cells.push(new Date(d));d.setDate(d.getDate()+1);}
   _kalEv=[];const evs={},add=(iso,ev)=>{ev.iso=iso;const i=_kalEv.push(ev)-1;(evs[iso]=evs[iso]||[]).push(i);};
+  const _wkOf=iso=>{const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()-d.getDay());return isoOf(d);};
   data.kelas.forEach(k=>{const s0=k.mulai?new Date(k.mulai+'T00:00:00'):null,s1=s0?new Date(s0):null;if(s1)s1.setDate(s1.getDate()+((+k.pekan||16)*7));
-    (k.sesi||[]).forEach(s=>cells.forEach(dt=>{if(dt.getDay()===s.hari&&(!s0||(dt>=s0&&dt<=s1))){const wkNo=s0?Math.floor((dt-s0)/6048e5)+1:null;let cls='kelas',jenis='Kuliah',short=k.kode,label=k.kode+' · '+k.nama;if(wkNo&&wkNo===k.utsPekan){cls='uts';jenis='UTS';short='UTS '+k.kode;label='UTS · '+k.kode+' · '+k.nama;}else if(wkNo&&wkNo===k.uasPekan){cls='uas';jenis='UAS';short='UAS '+k.kode;label='UAS · '+k.kode+' · '+k.nama;}add(isoOf(dt),{cls,short,label,mulai:s.mulaiJam,selesai:s.selesaiJam,ruang:s.ruang,jenis});}}));});
+    const utsWk=k.utsTgl?_wkOf(k.utsTgl):null,uasWk=k.uasTgl?_wkOf(k.uasTgl):null;
+    (k.sesi||[]).forEach(s=>cells.forEach(dt=>{if(dt.getDay()===s.hari&&(!s0||(dt>=s0&&dt<=s1))){const ii=isoOf(dt),wk=_wkOf(ii);if(wk===utsWk||wk===uasWk)return;add(ii,{cls:'kelas',short:k.kode,label:k.kode+' · '+k.nama,mulai:s.mulaiJam,selesai:s.selesaiJam,ruang:s.ruang,jenis:'Kuliah'});}}));
+    if(k.utsTgl)add(k.utsTgl,{cls:'uts',short:'UTS '+k.kode,label:'UTS · '+k.kode+' · '+k.nama,mulai:k.utsMulai||'',selesai:k.utsSelesai||'',ruang:k.utsRuang||'—',jenis:'UTS'});
+    if(k.uasTgl)add(k.uasTgl,{cls:'uas',short:'UAS '+k.kode,label:'UAS · '+k.kode+' · '+k.nama,mulai:k.uasMulai||'',selesai:k.uasSelesai||'',ruang:k.uasRuang||'—',jenis:'UAS'});
+  });
   data.bimbingan.forEach(b=>{if(b.tgl&&b.status!=='usul')add(b.tgl,{cls:'bimb',short:(b.nama||'Bimbingan'),label:(b.nama||'Bimbingan'),mulai:b.jam,selesai:toHM(toMin(b.jam)+(+b.durasi||30)),ruang:b.lokasi||b.modeB||'—',jenis:'Bimbingan'});});
   data.pengumuman.forEach(p=>{if(p.ganti&&p.ganti.tanggal)add(p.ganti.tanggal,{cls:'ganti',short:'Pengganti',label:p.judul,mulai:p.ganti.mulai,selesai:p.ganti.selesai,ruang:p.ganti.ruang,jenis:'Kuliah pengganti'});});
   data.aktivitas.forEach(a=>{const mk=dt=>add(isoOf(dt),{cls:'akt',short:a.judul,label:a.judul,mulai:a.seharian?'':a.mulai,selesai:a.seharian?'':a.selesai,ruang:a.lokasi||'',jenis:'Aktivitas'});
